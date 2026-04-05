@@ -57,9 +57,11 @@ ARG ENV_NAME=retail_replenish
 # Final runtime stage
 FROM ${BASE_IMAGE}
 
-COPY requirements.txt .
+COPY server/requirements.txt .
 
 RUN pip install -r requirements.txt
+
+COPY . /app/retail_replenish
 
 WORKDIR /app
 
@@ -73,7 +75,7 @@ WORKDIR /app
 #ENV PATH="/app/.venv/bin:$PATH"
 
 # Set PYTHONPATH so imports work correctly
-ENV PYTHONPATH="/app/env:$PYTHONPATH"
+ENV PYTHONPATH="/app/retail_replenish:$PYTHONPATH"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
@@ -81,4 +83,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Run the FastAPI server
 # The module path is constructed to work with the /app/env structure
-CMD ["sh", "-c", "cd /app/env && uvicorn server.app:app --host 0.0.0.0 --port 8000"]
+WORKDIR /app
+
+CMD ["uvicorn", "retail_replenish.server.app:app", "--host", "0.0.0.0", "--port", "8000"]

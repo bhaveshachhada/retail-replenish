@@ -16,14 +16,18 @@ from uuid import uuid4
 from openenv.core.env_server.interfaces import Environment
 from openenv.core.env_server.types import State
 
-try:
-    from ..models import RetailReplenishAction, RetailReplenishObservation
-except ImportError:
-    from models import (
-        RetailReplenishAction,
-        RetailReplenishObservation,
-        RetailReplenishState,
-    )
+from retail_replenish import RetailReplenishAction, RetailReplenishObservation
+from retail_replenish.models import RetailReplenishState
+
+
+# try:
+#     from ..models import RetailReplenishAction, RetailReplenishObservation
+# except ImportError:
+#     from models import (
+#         RetailReplenishAction,
+#         RetailReplenishObservation,
+#         RetailReplenishState,
+#     )
 
 
 class RetailReplenishEnvironment(
