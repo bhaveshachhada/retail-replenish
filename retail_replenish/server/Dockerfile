@@ -24,16 +24,12 @@ RUN apt-get update && \
 ARG BUILD_MODE=in-repo
 ARG ENV_NAME=retail_replenish
 
-COPY requirements.txt .
-
-RUN pip install -r requirements.txt
-
 # Copy environment code (always at root of build context)
-COPY . /app/env
+#COPY . /app/env
 
 # For in-repo builds, openenv is already vendored in the build context
 # For standalone builds, openenv will be installed via pyproject.toml
-WORKDIR /app/env
+#WORKDIR /app/env
 
 # Ensure uv is available (for local builds where base image lacks it)
 #RUN if ! command -v uv >/dev/null 2>&1; then \
@@ -61,16 +57,20 @@ WORKDIR /app/env
 # Final runtime stage
 FROM ${BASE_IMAGE}
 
+COPY requirements.txt .
+
+RUN pip install -r requirements.txt
+
 WORKDIR /app
 
 # Copy the virtual environment from builder
-COPY --from=builder /app/env/.venv /app/.venv
+#COPY --from=builder /app/env/.venv /app/.venv
 
 # Copy the environment code
-COPY --from=builder /app/env /app/env
+#COPY --from=builder /app/env /app/env
 
 # Set PATH to use the virtual environment
-ENV PATH="/app/.venv/bin:$PATH"
+#ENV PATH="/app/.venv/bin:$PATH"
 
 # Set PYTHONPATH so imports work correctly
 ENV PYTHONPATH="/app/env:$PYTHONPATH"
