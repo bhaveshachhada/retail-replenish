@@ -28,19 +28,15 @@ Usage:
     python -m server.app
 """
 
+from retail_replenish import RetailReplenishAction, RetailReplenishObservation
+from retail_replenish.server import RetailReplenishEnvironment
+
 try:
     from openenv.core.env_server.http_server import create_app
 except Exception as e:  # pragma: no cover
     raise ImportError(
         "openenv is required for the web interface. Install dependencies with '\n    uv sync\n'"
     ) from e
-
-try:
-    from ..models import RetailReplenishAction, RetailReplenishObservation
-    from .retail_replenish_environment import RetailReplenishEnvironment
-except ModuleNotFoundError:
-    from models import RetailReplenishAction, RetailReplenishObservation
-    from server.retail_replenish_environment import RetailReplenishEnvironment
 
 
 # Create the app with web interface and README integration
