@@ -12,7 +12,11 @@ from openenv.core import EnvClient
 from openenv.core.client_types import StepResult
 from openenv.core.env_server.types import State
 
-from .models import RetailReplenishAction, RetailReplenishObservation
+from .models import (
+    RetailReplenishAction,
+    RetailReplenishObservation,
+    RetailReplenishState,
+)
 
 
 class RetailReplenishEnv(
@@ -55,7 +59,10 @@ class RetailReplenishEnv(
             Dictionary representation suitable for JSON encoding
         """
         return {
-            "message": action.message,
+            "replenish": action.replenish,
+            "emergency_order": action.emergency_order,
+            "dc_order": action.dc_order,
+            "inter_store_transfer": action.inter_store_transfer,
         }
 
     def _parse_result(self, payload: Dict) -> StepResult[RetailReplenishObservation]:
@@ -70,17 +77,24 @@ class RetailReplenishEnv(
         """
         obs_data = payload.get("observation", {})
         observation = RetailReplenishObservation(
-            echoed_message=obs_data.get("echoed_message", ""),
-            message_length=obs_data.get("message_length", 0),
-            done=payload.get("done", False),
-            reward=payload.get("reward"),
+            store_inventory=obs_data.get("store_inventory", []),
+            dc_inventory=obs_data.get("dc_inventory", []),
+            expiry_countdown=obs_data.get("expiry_countdown", []),
+            in_transit=obs_data.get("in_transit", []),
+            supplier_status=obs_data.get("supplier_status", []),
+            truck_capacity=obs_data.get("truck_capacity", []),
+            demand_forecast=obs_data.get("demand_forecast", []),
+            current_day=obs_data.get("current_day"),
+            day_of_week=obs_data.get("day_of_week"),
+            reward_breakdown=obs_data.get("reward_breakdown", None),
+            done=obs_data.get("done", False),
+            reward=obs_data.get("reward", 0),
             metadata=obs_data.get("metadata", {}),
         )
-
         return StepResult(
             observation=observation,
-            reward=payload.get("reward"),
-            done=payload.get("done", False),
+            reward=observation.reward,
+            done=observation.done,
         )
 
     def _parse_state(self, payload: Dict) -> State:
@@ -93,7 +107,14 @@ class RetailReplenishEnv(
         Returns:
             State object with episode_id and step_count
         """
-        return State(
+        return RetailReplenishState(
             episode_id=payload.get("episode_id"),
             step_count=payload.get("step_count", 0),
+            day=payload.get("day"),
+            store_inventory=payload.get("store_inventory", {}),
+            dc_inventory=payload.get("dc_inventory", {}),
+            in_transit=payload.get("in_transit", []),
+            pending_dc_orders=payload.get("pending_dc_orders", []),
+            supplier_status=payload.get("supplier_status", {}),
+            demand_overrides=payload.get("demand_overrides", {}),
         )

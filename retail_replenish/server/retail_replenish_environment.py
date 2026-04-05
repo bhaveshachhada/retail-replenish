@@ -19,10 +19,16 @@ from openenv.core.env_server.types import State
 try:
     from ..models import RetailReplenishAction, RetailReplenishObservation
 except ImportError:
-    from models import RetailReplenishAction, RetailReplenishObservation
+    from models import (
+        RetailReplenishAction,
+        RetailReplenishObservation,
+        RetailReplenishState,
+    )
 
 
-class RetailReplenishEnvironment(Environment):
+class RetailReplenishEnvironment(
+    Environment[RetailReplenishAction, RetailReplenishObservation, RetailReplenishState]
+):
     """
     A simple echo environment that echoes back messages.
 
