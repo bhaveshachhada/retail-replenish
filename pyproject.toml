@@ -35,9 +35,4 @@ dev = [
 [project.scripts]
 # Server entry point - enables running via: uv run --project . server
 # or: python -m maze_env.server.app
-server = "maze_env.server.app:main"
-
-[tool.setuptools]
-include-package-data = true
-packages = ["maze_env", "maze_env.server"]
-package-dir = { "maze_env" = ".", "maze_env.server" = "server" }
+server = "server.app:main"
