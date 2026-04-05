@@ -1,13 +1,20 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Tuple
-import numpy as np
 
-from .state import (
-    EnvState,
+import uuid
+from typing import Any, Dict, List, Optional
+import numpy as np
+from openenv.core import Environment
+
+from models import (
+    RetailReplenishObservation,
+    RetailReplenishAction,
+    RetailReplenishState,
+    StoreInventory,
     SKU,
     Store,
     Supplier,
-    StoreInventory,
+)
+from .state import (
     StepRecord,
     Trajectory,
 )
@@ -64,7 +71,9 @@ Info = Dict[str, Any]
 # ---------------------------------------------------------------------------
 
 
-class RetailReplenishEnv:
+class RetailReplenishEnv(
+    Environment[RetailReplenishAction, RetailReplenishObservation, RetailReplenishState]
+):
     """
     OpenEnv-compliant retail inventory replenishment environment.
 
@@ -76,11 +85,12 @@ class RetailReplenishEnv:
     metadata = {"render_modes": ["text", "dict"], "version": "1.0.0"}
 
     def __init__(self, config: TaskConfig):
+        super().__init__()
         self.config = config
         self._skus = {s.sku_id: s for s in config.skus}
         self._stores = {s.store_id: s for s in config.stores}
 
-        self._state: Optional[EnvState] = None
+        self._state: Optional[RetailReplenishState] = None
         self._trajectory: Optional[Trajectory] = None
         self._rng: Optional[np.random.Generator] = None
         self._total_received: int = (
@@ -99,7 +109,13 @@ class RetailReplenishEnv:
     # OpenEnv interface
     # ------------------------------------------------------------------
 
-    def reset(self, seed: int | None = None) -> Tuple[Observation, Info]:
+    @property
+    def state(self) -> RetailReplenishState:
+        return self._state
+
+    def reset(
+        self, seed: Optional[int] = None, episode_id: Optional[str] = None, **kwargs
+    ) -> RetailReplenishObservation:
         self._rng = np.random.default_rng(seed)
         self._demand_sim = DemandSimulator(
             self.config.skus, self.config.stores, self._rng
@@ -129,7 +145,7 @@ class RetailReplenishEnv:
                 store_inv[store.store_id][sku.sku_id] = si
                 self._total_received += init_units
 
-        self._state = EnvState(
+        self._state = RetailReplenishState(
             day=0,
             store_inventory=store_inv,
             dc_inventory=dict(self.config.initial_dc_inventory),
@@ -139,15 +155,23 @@ class RetailReplenishEnv:
                 s.supplier_id: s.is_operational for s in self.config.suppliers
             },
             demand_overrides=self.config.demand_overrides,
+            episode_id=str(uuid.uuid4()),
+            step_count=0,
         )
 
         self._trajectory = Trajectory(task_id=self.config.task_id)
-        obs = self._build_observation()
-        return obs, {"day": 0, "task_id": self.config.task_id}
+        obs = self._build_observation(reward=0)
+        return obs
 
-    def step(self, action: Action) -> Tuple[Observation, float, bool, bool, Info]:
+    def step(
+        self,
+        action: Action,
+        timeout_s: Optional[float] = None,
+        **kwargs: Any,
+    ) -> RetailReplenishObservation:
         assert self._state is not None, "Call reset() before step()."
 
+        self._state.step_count += 1
         state = self._state
 
         # Apply any supplier disruption events for today
@@ -202,16 +226,11 @@ class RetailReplenishEnv:
 
         state.day += 1
         terminated = state.day >= self.config.episode_days
-        obs = self._build_observation()
+        obs = self._build_observation(
+            reward=reward, reward_breakdown=breakdown, terminated=terminated
+        )
 
-        info: Info = {
-            "day": state.day,
-            "reward_breakdown": breakdown,
-            "fill_rate": self._trajectory.fill_rate(),
-            "total_waste": self._trajectory.total_waste(),
-        }
-
-        return obs, reward, terminated, False, info
+        return obs
 
     def render(self, mode: str = "text") -> str | dict:
         if self._state is None:
@@ -260,7 +279,12 @@ class RetailReplenishEnv:
     # Observation builder
     # ------------------------------------------------------------------
 
-    def _build_observation(self) -> Observation:
+    def _build_observation(
+        self,
+        reward: float,
+        reward_breakdown: Optional[Dict[str, Any]] = None,
+        terminated: bool = False,
+    ) -> RetailReplenishObservation:
         s = self._state
         store_ids = [st.store_id for st in self.config.stores]
         sku_ids = [sk.sku_id for sk in self.config.skus]
@@ -319,14 +343,19 @@ class RetailReplenishEnv:
             dtype=np.float32,
         )
 
-        return {
-            "store_inventory": store_inv,  # (n_stores, n_skus)
-            "dc_inventory": dc_inv,  # (n_skus,)
-            "expiry_countdown": expiry,  # (n_stores, n_skus)
-            "in_transit": in_transit,  # (n_stores, n_skus)
-            "truck_capacity": truck_cap,  # (n_stores,)
-            "supplier_status": supplier_status,  # (n_suppliers,)
-            "demand_forecast": forecast_arr,  # (n_stores, n_skus, horizon)
-            "current_day": s.day,
-            "day_of_week": s.day % 7,
-        }
+        return RetailReplenishObservation(
+            **{
+                "store_inventory": store_inv,  # (n_stores, n_skus)
+                "dc_inventory": dc_inv,  # (n_skus,)
+                "expiry_countdown": expiry,  # (n_stores, n_skus)
+                "in_transit": in_transit,  # (n_stores, n_skus)
+                "truck_capacity": truck_cap,  # (n_stores,)
+                "supplier_status": supplier_status,  # (n_suppliers,)
+                "demand_forecast": forecast_arr,  # (n_stores, n_skus, horizon)
+                "current_day": s.day,
+                "day_of_week": s.day % 7,
+                "done": terminated,
+                "reward": reward,
+                "reward_breakdown": reward_breakdown,
+            }
+        )
