@@ -327,6 +327,6 @@ class RetailReplenishEnv:
             "truck_capacity": truck_cap,  # (n_stores,)
             "supplier_status": supplier_status,  # (n_suppliers,)
             "demand_forecast": forecast_arr,  # (n_stores, n_skus, horizon)
-            "current_day": np.array([s.day], dtype=np.float32),
-            "day_of_week": np.array([s.day % 7], dtype=np.float32),
+            "current_day": s.day,
+            "day_of_week": s.day % 7,
         }
