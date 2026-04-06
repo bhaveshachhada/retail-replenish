@@ -12,7 +12,7 @@ Perfect for testing HTTP server infrastructure.
 """
 
 import uuid
-from typing import Optional, Dict, Any, List
+from typing import List, Dict, Optional, Any
 from uuid import uuid4
 
 import numpy as np
@@ -22,11 +22,10 @@ from openenv.core.env_server.types import State
 from retail_replenish import RetailReplenishAction, RetailReplenishObservation
 from retail_replenish.models import (
     RetailReplenishState,
-    StoreInventory,
     SKU,
     Store,
     Supplier,
-    ExpiryBatch,
+    StoreInventory,
 )
 from retail_replenish.server.dynamics import DemandSimulator, TransitionEngine
 from retail_replenish.server.reward import RewardWeights, RewardFunction
@@ -96,7 +95,6 @@ class RetailReplenishEnvironment(
         self._reset_count = 0
 
         self.config = make_task3_config()
-
         self._skus = {s.sku_id: s for s in self.config.skus}
         self._stores = {s.store_id: s for s in self.config.stores}
 
@@ -144,9 +142,14 @@ class RetailReplenishEnvironment(
                 si = StoreInventory(units=init_units)
                 if sku.is_perishable and init_units > 0:
                     si.batches.append(
-                        ExpiryBatch(
-                            units=init_units, expires_on_day=sku.shelf_life_days
-                        )
+                        type(
+                            "ExpiryBatch",
+                            (),
+                            {
+                                "units": init_units,
+                                "expires_on_day": sku.shelf_life_days,
+                            },
+                        )()
                     )
                 store_inv[store.store_id][sku.sku_id] = si
                 self._total_received += init_units
@@ -185,8 +188,6 @@ class RetailReplenishEnvironment(
         Returns:
             RetailReplenishObservation with the echoed message and its length
         """
-        self._state.step_count += 1
-
         assert self._state is not None, "Call reset() before step()."
 
         self._state.step_count += 1
@@ -259,10 +260,6 @@ class RetailReplenishEnvironment(
             Current State with episode_id and step_count
         """
         return self._state
-
-    # ------------------------------------------------------------------
-    # Observation builder
-    # ------------------------------------------------------------------
 
     def _build_observation(
         self,
