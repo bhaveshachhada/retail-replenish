@@ -74,7 +74,7 @@ class DeliveryOrder(BaseModel):
     is_emergency: bool = Field(default=False)
 
 
-class SupplierOrder:
+class SupplierOrder(BaseModel):
     """Pending reorder from supplier to DC."""
 
     sku_id: str = Field(...)

@@ -1,7 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict
-from .state import SKU, Store
+
+from retail_replenish.models import SKU, Store
 
 
 @dataclass
