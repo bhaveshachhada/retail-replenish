@@ -2,7 +2,13 @@ from __future__ import annotations
 from typing import Dict, List, Tuple
 import numpy as np
 
-from .state import EnvState, SKU, Store, DeliveryOrder, SupplierOrder
+from retail_replenish.models import (
+    SKU,
+    Store,
+    RetailReplenishState,
+    DeliveryOrder,
+    SupplierOrder,
+)
 
 
 class DemandSimulator:
@@ -70,7 +76,7 @@ class DemandSimulator:
 
 
 class TransitionEngine:
-    """Applies one day's transitions to EnvState, returns a StepRecord."""
+    """Applies one day's transitions to RetailReplenishState, returns a StepRecord."""
 
     def __init__(self, skus: List[SKU], stores: List[Store]):
         self.skus = {s.sku_id: s for s in skus}
@@ -79,7 +85,7 @@ class TransitionEngine:
     # ------------------------------------------------------------------
     # Phase 1: Resolve deliveries arriving today
     # ------------------------------------------------------------------
-    def deliver_in_transit(self, state: EnvState) -> None:
+    def deliver_in_transit(self, state: RetailReplenishState) -> None:
         arriving = [o for o in state.in_transit if o.arrives_on_day == state.day]
         for order in arriving:
             inv = state.store_inventory[order.store_id][order.sku_id]
@@ -95,7 +101,7 @@ class TransitionEngine:
     # ------------------------------------------------------------------
     # Phase 2: Resolve DC reorders arriving today
     # ------------------------------------------------------------------
-    def receive_dc_orders(self, state: EnvState) -> None:
+    def receive_dc_orders(self, state: RetailReplenishState) -> None:
         arriving = [o for o in state.pending_dc_orders if o.arrives_on_day == state.day]
         for order in arriving:
             state.dc_inventory[order.sku_id] = (
@@ -108,7 +114,9 @@ class TransitionEngine:
     # ------------------------------------------------------------------
     # Phase 3: Expire perishable units at stores
     # ------------------------------------------------------------------
-    def expire_perishables(self, state: EnvState) -> Dict[str, Dict[str, int]]:
+    def expire_perishables(
+        self, state: RetailReplenishState
+    ) -> Dict[str, Dict[str, int]]:
         waste: Dict[str, Dict[str, int]] = {}
         for store_id, sku_inv in state.store_inventory.items():
             waste[store_id] = {}
@@ -126,7 +134,7 @@ class TransitionEngine:
     # ------------------------------------------------------------------
     def apply_replenishment(
         self,
-        state: EnvState,
+        state: RetailReplenishState,
         replenish: Dict[str, Dict[str, int]],  # store_id -> sku_id -> units
         emergency_reorder: Dict[str, int],  # sku_id -> units
         dc_reorder: Dict[str, int],  # sku_id -> units
@@ -221,7 +229,7 @@ class TransitionEngine:
     # ------------------------------------------------------------------
     def simulate_sales(
         self,
-        state: EnvState,
+        state: RetailReplenishState,
         demand: Dict[str, Dict[str, int]],
     ) -> Tuple[Dict[str, Dict[str, int]], Dict[str, Dict[str, int]]]:
         """
@@ -244,7 +252,7 @@ class TransitionEngine:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _find_supplier_for_sku(self, state: EnvState, sku_id: str):
+    def _find_supplier_for_sku(self, state: RetailReplenishState, sku_id: str):
         # Returns first operational supplier that handles this SKU
         # Supplier metadata is held externally; here we just check status dict keys
         # For simplicity, if supplier is disrupted, return None
@@ -253,6 +261,6 @@ class TransitionEngine:
                 return sup_id
         return None
 
-    def _get_lead_time(self, state: EnvState, sku_id: str) -> int:
+    def _get_lead_time(self, state: RetailReplenishState, sku_id: str) -> int:
         # Default lead time 2 days; overridable via task config
         return 2
