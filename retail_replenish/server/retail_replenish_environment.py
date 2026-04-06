@@ -183,7 +183,8 @@ class RetailReplenishEnvironment(
 
         Args:
             action: RetailReplenishAction containing the message to echo
-
+            timeout_s: Timeout in seconds to wait for a response
+            **kwargs: Additional arguments to pass to the action
         Returns:
             RetailReplenishObservation with the echoed message and its length
         """
