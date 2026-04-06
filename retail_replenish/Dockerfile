@@ -61,7 +61,7 @@ COPY server/requirements.txt .
 
 RUN pip install -r requirements.txt
 
-COPY server /app/retail_replenish
+COPY . /app/retail_replenish
 
 WORKDIR /app
 
